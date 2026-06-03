@@ -1,0 +1,43 @@
+name: Build and Push Docker Images (GHCR)
+on:
+  workflow_dispatch:
+  
+jobs:
+  call-docker-build:
+    name: Build Docker Images
+    uses: ./.github/workflows/docker-build.yml
+
+  push-images-ghcr:
+    name: Push Built Images to GHCR
+    needs: call-docker-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Built Image Arteficts
+        uses: actions/download-artifact@v7
+        with:
+          name: docker-built-images
+          path: ${{ runner.temp }}/
+          
+      - name: Load Images on Docker Daemon
+        run: |
+          docker load --input ${{ runner.temp }}/python-client.tar
+          docker load --input ${{ runner.temp }}/python-server.tar
+          
+      - name: Set Dynamic ENV Variables
+        run: |
+          echo "ACTOR_LOWER=$(echo '${{ github.actor }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          echo "REPO_OWNER_LOWER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ env.ACTOR_LOWER }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Tag and Push Images to GitHub Container Registry
+        run: |
+          docker tag python-client:v1 ghcr.io/${{ env.REPO_OWNER_LOWER }}/python-client:v1
+          docker tag python-server:v1 ghcr.io/${{ env.REPO_OWNER_LOWER }}/python-server:v1
+          docker push ghcr.io/${{ env.REPO_OWNER_LOWER }}/python-client:v1
+          docker push ghcr.io/${{ env.REPO_OWNER_LOWER }}/python-server:v1
