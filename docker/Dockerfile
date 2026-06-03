@@ -24,7 +24,7 @@ FROM setup AS tester
   WORKDIR "/tmp/tcp-stack-demo/Stack/"
     RUN pylint --disable=trailing-whitespace,invalid-name,consider-using-f-string,missing-function-docstring --fail-under=8.0 client.py server.py
     RUN bandit --skip B322 -lll client.py server.py
-    RUN python3 -m pytest tests/
+    RUN python3 -m pytest --capture=no tests/
     
 
 FROM setup AS base
