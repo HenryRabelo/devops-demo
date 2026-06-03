@@ -1,8 +1,10 @@
 name: Build and Push Docker Images (GHCR)
+
 on:
   workflow_dispatch:
-  
+
 jobs:
+
   call-docker-build:
     name: Build Docker Images
     uses: ./.github/workflows/docker-build.yml
@@ -11,6 +13,11 @@ jobs:
     name: Push Built Images to GHCR
     needs: call-docker-build
     runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      packages: write
+      
     steps:
       - name: Download Built Image Arteficts
         uses: actions/download-artifact@v7
