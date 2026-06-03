@@ -1,0 +1,83 @@
+name: Local Build Docker Images
+on:
+  workflow_call:
+
+jobs:
+  build-local:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📦 Checkout repository
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: docker
+          fetch-depth: 1
+          # 'fetch-depth: 1' pulls only latest commit inside Actions container
+        
+      - name: 🛠 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: 📄 Check Dockerfile for Best Practices (Hadolint)
+        uses: hadolint/hadolint-action@v3.3.0
+        with:
+          dockerfile: ./docker/Dockerfile
+          failure-threshold: error
+
+      - name: 🧪 [Tester] - Build and Run SAST & Unit Tests on Code
+        uses: docker/build-push-action@v7
+        with:
+          context: ./docker
+          target: tester
+          tags: local/python-tester:testing
+          load: false
+          push: false
+
+      - name: 🐳 [Client] - Build and Export Image to Local Host
+        uses: docker/build-push-action@v7
+        with:
+          context: ./docker
+          target: client
+          tags: local/python-client:v1
+          outputs: type=docker, dest=${{ runner.temp }}/python-client.tar
+          load: true
+          push: false
+          # 'load: true' forces push to local daemon
+          
+      - name: 🐳 [Server] - Build and Export Image to Local Host
+        uses: docker/build-push-action@v7
+        with:
+          context: ./docker
+          target: server
+          tags: local/python-server:v1
+          outputs: type=docker, dest=${{ runner.temp }}/python-server.tar
+          load: true
+          push: false
+          
+      - name: 🔍 [Client] - Scan Exported Build for CVEs (Trivy)
+        uses: aquasecurity/trivy-action@master
+        env:
+            TRIVY_IGNORE_STATUS: fixed
+        with:
+          input: ${{ runner.temp }}/python-client.tar
+          scan-type: image
+          format: table
+          exit-code: 1
+          severity: HIGH,CRITICAL
+          # 'exit-code: 0' Would not fail build if Critical/High CVE is found
+          
+      - name: 🔍 [Server] - Scan Exported Build for CVEs (Trivy)
+        uses: aquasecurity/trivy-action@master
+        env:
+            TRIVY_IGNORE_STATUS: fixed
+        with:
+          input: ${{ runner.temp }}/python-server.tar
+          scan-type: image
+          format: table
+          exit-code: 1
+          severity: HIGH,CRITICAL
+          
+      - name: Upload Images as Artifacts to be Reused
+        uses: actions/upload-artifact@v7
+        with:
+          name: docker-built-images
+          path: ${{ runner.temp }}/
+          retention-days: 1
