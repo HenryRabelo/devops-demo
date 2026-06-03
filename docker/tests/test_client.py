@@ -9,8 +9,12 @@ PORT = 3333
 def test_python_version():
   from packaging.version import Version
   
+  target_version="3.10.0"
+  max_version="3.14.0"
+  
   current_version = sys.version.split()[0]
-  assert Version(current_version) >= Version("3.10.0")
+  assert Version(current_version) >= Version(target_version)
+  assert Version(current_version) < Version(max_version)
 
 
 def test_dependencies():
@@ -21,6 +25,7 @@ def test_dependencies():
     importlib.import_module("packaging")
     importlib.import_module("importlib")
     importlib.import_module("sys")
+    importlib.import_module("psutil")
         
     importlib.import_module("socket")
     importlib.import_module("json")
@@ -31,6 +36,27 @@ def test_dependencies():
     dependencies_met = False
         
   assert dependencies_met
+
+
+def test_resource_usage():
+  import psutil
+  
+  threshold=80.0
+  
+  # Get CPU usage as percentage every second
+  cpu_usage = psutil.cpu_percent(interval=1.0)
+  
+  # Get Memory usage info and percentage
+  memory_info = psutil.virtual_memory()
+  memory_usage = memory_info.percent
+  
+  print("\n---- Client resource usage test: ----")
+  print("Current CPU usage: {}%".format(cpu_usage))
+  print("Current RAM usage: {}%".format(memory_usage))
+  print("-------------------------------------\n")
+  
+  assert cpu_usage <= threshold
+  assert memory_usage <= threshold
 
 
 def test_encapsulate():

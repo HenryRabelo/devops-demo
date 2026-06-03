@@ -13,7 +13,7 @@ FROM ubuntu:24.04 AS setup
 FROM setup AS tester
   # Package Management
   RUN apt-get update &&\
-  apt-get install --yes --no-install-recommends git pylint python3-bandit python3-pytest python3-pytest-mock &&\
+  apt-get install --yes --no-install-recommends git pylint python3-bandit python3-pytest python3-psutil python3-pytest-mock &&\
   rm -rf /var/lib/apt/lists/*
 
   WORKDIR "/tmp/"
